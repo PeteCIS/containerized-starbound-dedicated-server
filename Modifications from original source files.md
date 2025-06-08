@@ -33,12 +33,6 @@ The fixing of permissions section code used a hard coded PGID and PUID of 1000. 
 
 ## NEED TO FIX THE /app.steam typo, should be /app/.steam
 
-## DO WE REALLY NEED TO MOUNT THE ENTIRE /app/.steam directory?? 
-  - Should we instead map to /app/.steam/logs?
-
-## DO WE REALLY NEED TO MOUNT THE ENTIRE /steamcmd/starbound directory?
-  - Should we instead map to /steamcmd/starbound/storage directory?
-
 # start.sh changes
 
 # install.txt changes
