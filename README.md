@@ -14,7 +14,7 @@ Except for simple testing you will want to persist your Starbound Universe.
 Since no data in a Docker Container is persisted you will need to mount the directory /steam/starbound to a directory outside of the Container
 
 
-#TODO : FINISH EDITING THIS
+# TODO : FINISH EDITING THIS
 
 
 **NOTE**: This image will install/update on startup. The path ```/steamcmd/starbound``` can be mounted on the host for data persistence.
