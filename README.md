@@ -26,13 +26,6 @@ https://github.com/PeteCIS/containerized-starbound-dedicated-server/blob/Peter-i
 https://github.com/PeteCIS/containerized-starbound-dedicated-server/blob/Peter-in-progress/Modifications%20from%20original%20source%20files.md
 
 
-Talk about opening ports 21025 and 21026 (Rcon)
-Investigate adding both ports as env variables
-investigate setting both ports to be the defaults. Right now they're set to 28015 and 28016 which are default ports for a different game (probably Rust).
-Move some of these notes into the TODO.md file instead of here
-
-
-
 **NOTE**: This image will install/update on startup. The path ```/steamcmd/starbound``` can be mounted on the host for data persistence.
 
 # How to run the server
