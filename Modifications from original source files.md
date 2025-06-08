@@ -31,7 +31,18 @@ The fixing of permissions section code used a hard coded PGID and PUID of 1000. 
   ```
 
 
-## NEED TO FIX THE /app.steam typo, should be /app/.steam
+## Fixed /app.steam Typo
+- OLD CODE:
+  ```
+  # Expose the volumes
+  VOLUME [ "/app.steam", "/steamcmd/starbound" ]
+  ```
+
+- NEW CODE:
+  ```
+  # Expose the volumes
+  VOLUME [ "/app/.steam", "/steamcmd/starbound" ]
+  ```
 
 # start.sh changes
 
