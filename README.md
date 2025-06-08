@@ -16,6 +16,15 @@ Since no data in a Docker Container is persisted you will need to mount the dire
 
 # TODO : FINISH EDITING THIS
 
+Talk about mounting using:  
+docker run -v <host_path>:<container_path> <image_name>
+add instructions for mounting via QNap QTS also
+
+SEE TODO.md file and the Modifications from original source files.md files
+
+https://github.com/PeteCIS/containerized-starbound-dedicated-server/blob/Peter-in-progress/TODOs
+https://github.com/PeteCIS/containerized-starbound-dedicated-server/blob/Peter-in-progress/Modifications%20from%20original%20source%20files.md
+
 
 **NOTE**: This image will install/update on startup. The path ```/steamcmd/starbound``` can be mounted on the host for data persistence.
 
