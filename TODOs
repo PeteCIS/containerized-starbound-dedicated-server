@@ -12,4 +12,16 @@ Talk about opening ports 21025 and 21026 (Rcon)
 Investigate adding both ports as env variables
 investigate setting both ports to be the defaults. Right now they're set to 28015 and 28016 which are default ports for a different game (probably Rust).
 
+
+
+DO WE REALLY NEED TO MOUNT THE ENTIRE /app/.steam directory?? 
+  - Should we instead map to /app/.steam/logs?
+NOTES: Since this is not currently mapped properly it cannot be the source where the cached login credentials are stored
+  example, it's currently mapped to /app.steam which is incorrect. Thus, this entire directory is not persisted across container restarts
+
+DO WE REALLY NEED TO MOUNT THE ENTIRE /steamcmd/starbound directory?
+  - Should we instead map to /steamcmd/starbound/storage directory?
+- where are the steam cached credentials stored?
+
+
 Investigate starbound query server and ports
