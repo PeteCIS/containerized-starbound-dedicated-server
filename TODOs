@@ -1,0 +1,8 @@
+The base image I am using comes from here: https://github.com/Didstopia/docker-base-images
+It seems to be working but possibly not suppported
+Need to consider looking into moving to a supported ubuntu base image
+This guys base image looks really nice though and he put a lot of thought into it. Just want to make sure my starbound server container will keep working
+For example, Ubuntu 20.04 is the latest base image and it came out in April 2020. The most recent is 25.04.
+
+This base image is provided with the MIT license so it should be ok for me to take a copy and update it to the latest. After success I should consider submitting a pull request with the changes I made
+
