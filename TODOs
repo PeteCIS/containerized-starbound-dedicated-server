@@ -8,7 +8,7 @@ This base image is provided with the MIT license so it should be ok for me to ta
 
 
 
-Talk about opening ports 21025 and 21026 (Rcon)
+Talk about opening ports 21025 and 21026 (Rcon) BOTH need to be TCP, not UDP
 Investigate adding both ports as env variables
 investigate setting both ports to be the defaults. Right now they're set to 28015 and 28016 which are default ports for a different game (probably Rust).
 
