@@ -7,7 +7,7 @@ Actually implement the changes listed in this file:
 Right now it's a list of the stuff I definitely plan to do, but haven't actually done/tested yet.
 
 # Medium Term
-
+Create a file with isntructions on the steps to follow when creating a Starbound Server Container from QNAP Container Station
 
 
 
