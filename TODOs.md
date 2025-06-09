@@ -1,23 +1,10 @@
 This file contains a list of TODO's that I would like to accomplish for this project:
 
-
-
-
-
-
-
-
-
-
-
-
-
 # Short Term
-Talk about opening ports 21025 and 21026 (Rcon) BOTH need to be TCP, not UDP in the readme.md
-Investigate adding both ports as env variables
-investigate setting both ports to be the defaults. Right now they're set to 28015 and 28016 which are default ports for a different game (probably Rust).
+Actually implement the changes listed in this file:
+- [Modifications of the Original Source Files](<Modifications from original source files.md>)
 
-
+Right now it's a list of the stuff I definitely plan to do, but haven't actually done/tested yet.
 
 # Medium Term
 
