@@ -3,27 +3,58 @@ This is a Starbound Dedicated Server that runs in a Docker Container
 
 # Key Features
 - Works with Steam Guard
+  - See the [Steam Guard](#steam-guard) section for details
 - Supports automatically downloading mods from the Steam Workshop
 - Automatically updates the server and the mods each time the Container starts
 
-# Persisting the Starbound Universe across container restarts
+# Persisting The Starbound Universe And Other Data Across Container Restarts
+Unless you map these directories to a location outside of the container, no data will be saved after the container is restarted
+Various options are listed below. 
+- NOTE: Select only 1 of the options.
+
+## OPTION 1: Mapping An Exposed Docker Container Volume To A Host Directory
+One method of mapping the exposed Docker container volumes is to use the -v or --mount flag with the "docker run" command:
+  ```
+    docker run -v <host_path>:<container_path> <image_name>
+  ```
+
+## OPTION 2: Using Volumes To Map An Exposed Docker Container To A Host Directory
+Another method of mapping the exposed Docker container volumes is to use docker volumes and create a volume on the host for each of the volumes exposed from the container
+
+## OPTION 3: QNap QTS Container Station
+Container Staion has a UI to define volumes on the Host. You can then map the volumes exposed by the docker image to the volumes on the host during container creation.
+- See "Advanced Settings->Storage" when creating a container
+
+## Container volumes which are exposed
 The following 2 directories are available to be mounted
+- /steamcmd/starbound
+- /app/.steam
+
+### /steamcmd/starbound
+Important directories of note within this directory:
+- storage
+  - Contains the starbound_server.config file
+  - Contains the universe directory that holds all the game save files
+    
+    - Except for simple testing you will want to persist your Starbound Universe.
+    - NOTE: Your player saved data is stored on your local computer. Make sure to back that up regularly. Starbound does not use the steam cloud.
 
 
-Except for simple testing you will want to persist your Starbound Universe. 
-Since no data in a Docker Container is persisted you will need to mount the directory /steam/starbound to a directory outside of the Container
+### /app/.steam
+This is mostly optional. One of the uses of mapping this volume to a host directory is to access the steamcmd log files.
+Some sub-directories of note are:
+- /app/.steam/logs For the log files
+- /app/.steam/userdata
+- /app/.steam/config According to a google AI search the config.vdf file in this directory containes the cached credentials
+
+
+
+
 
 
 # TODO : FINISH EDITING THIS
 
-Talk about mounting using:  
-docker run -v <host_path>:<container_path> <image_name>
-add instructions for mounting via QNap QTS also
 
-SEE TODO.md file and the Modifications from original source files.md files
-
-https://github.com/PeteCIS/containerized-starbound-dedicated-server/blob/Peter-in-progress/TODOs
-https://github.com/PeteCIS/containerized-starbound-dedicated-server/blob/Peter-in-progress/Modifications%20from%20original%20source%20files.md
 
 
 **NOTE**: This image will install/update on startup. The path ```/steamcmd/starbound``` can be mounted on the host for data persistence.
@@ -62,7 +93,7 @@ The server will update each time the container starts up.
 
 Make sure to have your Steam username and password setup in the environment variables.
 As long as you have both your `STEAM_USERNAME` and `STEAM_PASSWORD` set, simply restarting the container should trigger the update procedure.
-See the [Environment Variables](#environment-varibales) section
+See the [Environment Variables](#environment-varibales) section.
 
 # Attributions
 A lot of credit goes to:
@@ -71,3 +102,10 @@ A lot of credit goes to:
 
 - AzureOwl over at https://github.com/Azure-Owl/starbound-server
    - Steam workshop Mod support
+ 
+# See Also
+SEE "TODO.md" file and the "Modifications from original source files.md files.md"
+TODO: Add links 
+- [TODO List](TODOs.md)
+- [Modifications of the Original Source Files]("Modifications from original source files.md")
+
