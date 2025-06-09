@@ -44,6 +44,23 @@ The fixing of permissions section code used a hard coded PGID and PUID of 1000. 
   VOLUME [ "/app/.steam", "/steamcmd/starbound" ]
   ```
 
+## Added another TCP port for the RCon serveer
+- OLD CODE:
+  ```
+  # Expose necessary ports
+  EXPOSE 21025/tcp
+  ```
+
+- NEW CODE:
+  ```
+  # Expose primary networking port
+  EXPOSE 21025/tcp
+  
+  # Expose RCon Server port
+  EXPOSE 20126/tcp
+  ```
+
+
 # start.sh changes
 
 # install.txt changes
