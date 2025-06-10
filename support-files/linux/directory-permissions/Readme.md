@@ -37,6 +37,9 @@ Please also provide examples of how to use this script via the file approach, th
 ## Second Pass
 please add functionality to print the usage options if the script is called with the "--help" argument or an error in processing input is encountered. Do not replace the error message in the case of an error, but additionally add the usage information. Also, please provide the usage examples and other information on usage in a separate .md file called "How-To-Use.md"
 
+## Third Pass
+please rewrite this to manually enumerate and traverse the directory instead of using chmod -R
+
 
 
 
