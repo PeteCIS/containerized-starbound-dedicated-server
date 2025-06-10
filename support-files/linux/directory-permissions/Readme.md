@@ -10,7 +10,7 @@ I decided to test out GitHub Copilot by getting it to make me a script that woul
 
 
 
-#Prompts Used To Prompt the AI
+# Prompts Used To Prompt the AI
 
 ## First Pass
 Please write me a linux bash script that modifies directory permissions recursively and base it on the following criteria:
