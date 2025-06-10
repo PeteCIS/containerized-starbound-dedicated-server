@@ -181,8 +181,48 @@ for perm in "${PERMISSIONS[@]}"; do
 done
 
 ##############################
-# Apply Permissions
+# Apply Permissions (Manual Traversal)
 ##############################
+# Note: this code uses manual traversal of the directory structure instead of chmod -R because I found an instance where chmod -R was returning "Bad address" errors for anything it recursed into.
+# I discovered this issue when running the script inside an ubunte 24.04 docker container
+# Function to process a single file or directory
+
+process_path() {
+    local path="$1"
+    local group="$2"
+    local add_perms="$3"
+    local remove_perms="$4"
+
+    # Change group ownership
+    log_info "Setting group ownership to '$group' for $path"
+    chown :"$group" "$path"
+
+    # Set permissions for group
+    if [[ -n "$add_perms" ]]; then
+        log_info "Adding group permissions: $add_perms to $path"
+        chmod "g+$add_perms" "$path"
+    fi
+    if [[ -n "$remove_perms" ]]; then
+        log_info "Removing group permissions: $remove_perms from $path"
+        chmod "g-$remove_perms" "$path"
+    fi
+}
+
+# Traverse directory recursively and apply permissions
+traverse_and_apply() {
+    local dir="$1"
+    local group="$2"
+    local add_perms="$3"
+    local remove_perms="$4"
+
+    # Process the directory itself first
+    process_path "$dir" "$group" "$add_perms" "$remove_perms"
+
+    # Use find to enumerate all files and subdirectories (excluding symlinks)
+    while IFS= read -r -d '' entry; do
+        process_path "$entry" "$group" "$add_perms" "$remove_perms"
+    done < <(find "$dir" -mindepth 1 ! -type l -print0)
+}
 
 for DIR in "${PATHS[@]}"; do
     log_info "Processing directory: $DIR"
@@ -193,21 +233,39 @@ for DIR in "${PATHS[@]}"; do
         continue
     fi
 
-    # Change group ownership recursively
-    log_info "Setting group ownership to '$GROUP' recursively for $DIR"
-    chown -R :"$GROUP" "$DIR"
-
-    # Set permissions recursively
-    if [[ -n "$CHMOD_ADD" ]]; then
-        log_info "Adding group permissions: $CHMOD_ADD recursively for $DIR"
-        chmod -R "g+$CHMOD_ADD" "$DIR"
-    fi
-    if [[ -n "$CHMOD_REMOVE" ]]; then
-        log_info "Removing group permissions: $CHMOD_REMOVE recursively for $DIR"
-        chmod -R "g-$CHMOD_REMOVE" "$DIR"
-    fi
-
+    traverse_and_apply "$DIR" "$GROUP" "$CHMOD_ADD" "$CHMOD_REMOVE"
     log_info "Completed processing $DIR"
 done
+
+# ##############################
+# # Apply Permissions
+# ##############################
+# Note: this code was re-written to use manual traversal (see above) of the directory structure because I found an instance where chmod -R was returning "Bad address" errors for anything it recursed into.
+
+# for DIR in "${PATHS[@]}"; do
+    # log_info "Processing directory: $DIR"
+
+    # # Check if directory exists
+    # if [[ ! -d "$DIR" ]]; then
+        # log_error "Directory not found: $DIR"
+        # continue
+    # fi
+
+    # # Change group ownership recursively
+    # log_info "Setting group ownership to '$GROUP' recursively for $DIR"
+    # chown -R :"$GROUP" "$DIR"
+
+    # # Set permissions recursively
+    # if [[ -n "$CHMOD_ADD" ]]; then
+        # log_info "Adding group permissions: $CHMOD_ADD recursively for $DIR"
+        # chmod -R "g+$CHMOD_ADD" "$DIR"
+    # fi
+    # if [[ -n "$CHMOD_REMOVE" ]]; then
+        # log_info "Removing group permissions: $CHMOD_REMOVE recursively for $DIR"
+        # chmod -R "g-$CHMOD_REMOVE" "$DIR"
+    # fi
+
+    # log_info "Completed processing $DIR"
+# done
 
 log_info "All operations completed."
