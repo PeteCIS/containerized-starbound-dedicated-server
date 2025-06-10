@@ -1,14 +1,18 @@
 This file contains a list of TODO's that I would like to accomplish for this project:
 
 # Short Term
-Actually implement the changes listed in this file:
-- [Modifications of the Original Source Files](<Modifications from original source files.md>)
+- Actually implement the changes listed in this file:
+  - [Modifications of the Original Source Files](<Modifications from original source files.md>)
+  - Right now it's a list of the stuff I definitely plan to do, but haven't actually done/tested yet.
 
-Right now it's a list of the stuff I definitely plan to do, but haven't actually done/tested yet.
 
 # Medium Term
-Create a file with isntructions on the steps to follow when creating a Starbound Server Container from QNAP Container Station
+- Create a file with instructions on the steps to follow when creating a Starbound Server Container from QNAP Container Station
 
+- Consider editing the dockerfile to expose another volume called "/shared_files"
+  - This folder is used to share common files across multiple containers
+  - Entirely optional, but helps if you want to get to a common set of files from the host (ex. common helper scripts)
+  - Perhaps put this as an option inside the ubuntu base image instead
 
 
 
