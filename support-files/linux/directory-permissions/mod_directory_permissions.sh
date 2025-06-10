@@ -1,146 +1,207 @@
 #!/bin/bash
 
 # mod_directory_permissions.sh
-# This script modifies directory permissions for a specified Linux group.
-# It supports three input methods, in order of precedence:
+# Recursively modify directory permissions for a given group
+# Reads paths, group, and permissions from (in order of precedence):
 # 1. Command line arguments
 # 2. Environment variables
-# 3. Input files (paths.txt, group.txt, permissions.txt)
+# 3. Files (paths.txt, group.txt, permissions.txt)
 
-# -------------------------------
-# Function to print usage
-# -------------------------------
-usage() {
-    echo "Usage:"
-    echo "  $0 -p <paths> -g <group> -m <permissions>"
-    echo ""
-    echo "  -p <paths>         : Comma-separated list of directory paths"
-    echo "  -g <group>         : Linux group name"
-    echo "  -m <permissions>   : Comma-separated permissions changes, e.g. '+read,-write,+execute'"
-    echo ""
-    echo "If arguments are not supplied, the script will check environment variables:"
-    echo "  MDP_PATHS, MDP_GROUP, MDP_PERMISSIONS"
-    echo ""
-    echo "If environment variables are not set, the script will read from:"
-    echo "  paths.txt, group.txt, permissions.txt"
-    exit 1
+##############################
+# Usage Function
+##############################
+print_usage() {
+    cat <<EOF
+Usage: $0 [--paths "path1,path2,..."] [--group GROUP] [--permissions "+read,-write,+execute"]
+Options:
+  --paths         Comma-separated list of directory paths to process.
+  --group         Linux group name to assign to the directories.
+  --permissions   Comma-separated list of permissions to add/remove. Each permission is "+read", "-write", or "+execute", etc.
+  --help          Show this usage information.
+
+Input precedence: Command line > Environment variables > Files (paths.txt, group.txt, permissions.txt)
+
+See How-To-Use.md for detailed instructions and examples.
+EOF
 }
 
-# -------------------------------
-# Function to map permission words to chmod symbols
-# -------------------------------
+##############################
+# Functions for messaging
+##############################
+
+log_info() {
+    echo "[INFO] $1"
+}
+
+log_error() {
+    echo "[ERROR] $1" >&2
+    print_usage
+}
+
+##############################
+# Parse Inputs
+##############################
+
+# Helper: Convert permission words to chmod symbols
+# $1: permission word ("read", "write", "execute")
 perm_to_symbol() {
     case "$1" in
         read) echo "r" ;;
         write) echo "w" ;;
         execute) echo "x" ;;
-        *) echo "" ;;
+        *)
+            log_error "Unknown permission: $1"
+            exit 1
+            ;;
     esac
 }
 
-# -------------------------------
-# Parse command line arguments if provided
-# -------------------------------
+# 1. Parse command line arguments
 CMD_PATHS=""
 CMD_GROUP=""
-CMD_PERMS=""
-while getopts "p:g:m:h" opt; do
-    case $opt in
-        p) CMD_PATHS="$OPTARG" ;;
-        g) CMD_GROUP="$OPTARG" ;;
-        m) CMD_PERMS="$OPTARG" ;;
-        h) usage ;;
-        *) usage ;;
+CMD_PERMISSIONS=""
+if [[ "$1" == "--help" ]]; then
+    print_usage
+    exit 0
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --paths)
+            CMD_PATHS="$2"
+            shift 2
+            ;;
+        --group)
+            CMD_GROUP="$2"
+            shift 2
+            ;;
+        --permissions)
+            CMD_PERMISSIONS="$2"
+            shift 2
+            ;;
+        --help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            log_error "Unknown argument: $1"
+            exit 1
+            ;;
     esac
 done
 
-# -------------------------------
-# Determine input source (precedence: CLI > ENV > FILES)
-# -------------------------------
-if [[ -n "$CMD_PATHS" || -n "$CMD_GROUP" || -n "$CMD_PERMS" ]]; then
-    # Command line parameters detected
-    echo "Using command line parameters."
-    IFS=',' read -r -a DIR_PATHS <<< "$CMD_PATHS"
+##############################
+# Read Input Sources
+##############################
+
+# Highest precedence: command line
+if [[ -n "$CMD_PATHS" && -n "$CMD_GROUP" && -n "$CMD_PERMISSIONS" ]]; then
+    log_info "Using command line arguments."
+    IFS=',' read -r -a PATHS <<< "$CMD_PATHS"
     GROUP="$CMD_GROUP"
-    IFS=',' read -r -a PERMISSIONS <<< "$CMD_PERMS"
-elif [[ -n "$MDP_PATHS" || -n "$MDP_GROUP" || -n "$MDP_PERMISSIONS" ]]; then
-    # Environment variables detected
-    echo "Using environment variables."
-    IFS=',' read -r -a DIR_PATHS <<< "$MDP_PATHS"
+    IFS=',' read -r -a PERMISSIONS <<< "$CMD_PERMISSIONS"
+# Second precedence: environment variables
+elif [[ -n "$MDP_PATHS" && -n "$MDP_GROUP" && -n "$MDP_PERMISSIONS" ]]; then
+    log_info "Using environment variables."
+    IFS=',' read -r -a PATHS <<< "$MDP_PATHS"
     GROUP="$MDP_GROUP"
     IFS=',' read -r -a PERMISSIONS <<< "$MDP_PERMISSIONS"
+# Lowest precedence: files
 else
-    # Fallback to files
-    echo "Using files: paths.txt, group.txt, permissions.txt"
-    if [[ ! -f "paths.txt" || ! -f "group.txt" || ! -f "permissions.txt" ]]; then
-        echo "Error: One or more input files (paths.txt, group.txt, permissions.txt) are missing."
+    log_info "Reading paths, group, and permissions from files."
+
+    if [[ ! -f "paths.txt" ]]; then
+        log_error "paths.txt not found."
         exit 1
     fi
-    mapfile -t DIR_PATHS < paths.txt
-    GROUP=$(head -n 1 group.txt)
-    mapfile -t PERMISSIONS < permissions.txt
+    if [[ ! -f "group.txt" ]]; then
+        log_error "group.txt not found."
+        exit 1
+    fi
+    if [[ ! -f "permissions.txt" ]]; then
+        log_error "permissions.txt not found."
+        exit 1
+    fi
+
+    # Read paths (can be one or more, ignore empty lines)
+    mapfile -t PATHS < <(grep -v '^\s*$' paths.txt)
+    # Read group (first non-empty line)
+    GROUP=$(grep -v '^\s*$' group.txt | head -n 1)
+    # Read permissions (can be multiple)
+    mapfile -t PERMISSIONS < <(grep -v '^\s*$' permissions.txt)
 fi
 
-# -------------------------------
-# Validate inputs
-# -------------------------------
+##############################
+# Validation
+##############################
+
+if [[ ${#PATHS[@]} -eq 0 ]]; then
+    log_error "No directory paths specified."
+    exit 1
+fi
+
 if [[ -z "$GROUP" ]]; then
-    echo "Error: Group must be specified."
-    usage
-fi
-
-if [[ ${#DIR_PATHS[@]} -eq 0 ]]; then
-    echo "Error: At least one directory path must be specified."
-    usage
+    log_error "No group specified."
+    exit 1
 fi
 
 if [[ ${#PERMISSIONS[@]} -eq 0 ]]; then
-    echo "Error: At least one permission change must be specified."
-    usage
+    log_error "No permissions specified."
+    exit 1
 fi
 
-echo "Directories:"
-for d in "${DIR_PATHS[@]}"; do
-    echo "  $d"
-done
-echo "Group: $GROUP"
-echo "Permissions:"
-for p in "${PERMISSIONS[@]}"; do
-    echo "  $p"
+##############################
+# Process Permissions
+##############################
+
+# Compose chmod symbolic string for group based on permissions
+# Supports multiple + and - operations (e.g., +r -w)
+
+CHMOD_ADD=""
+CHMOD_REMOVE=""
+
+for perm in "${PERMISSIONS[@]}"; do
+    sign="${perm:0:1}"
+    word="${perm:1}"
+    symbol=$(perm_to_symbol "$word")
+    if [[ "$sign" == "+" ]]; then
+        CHMOD_ADD+="$symbol"
+    elif [[ "$sign" == "-" ]]; then
+        CHMOD_REMOVE+="$symbol"
+    else
+        log_error "Invalid permission format: $perm"
+        exit 1
+    fi
 done
 
-# -------------------------------
-# Apply permissions
-# -------------------------------
-for dir in "${DIR_PATHS[@]}"; do
-    echo "Processing directory: $dir"
+##############################
+# Apply Permissions
+##############################
+
+for DIR in "${PATHS[@]}"; do
+    log_info "Processing directory: $DIR"
 
     # Check if directory exists
-    if [[ ! -d "$dir" ]]; then
-        echo "  Skipping: Directory does not exist."
+    if [[ ! -d "$DIR" ]]; then
+        log_error "Directory not found: $DIR"
         continue
     fi
 
-    # Change group ownership
-    echo "  Setting group ownership to $GROUP"
-    chgrp -R "$GROUP" "$dir"
+    # Change group ownership recursively
+    log_info "Setting group ownership to '$GROUP' recursively for $DIR"
+    chown -R :"$GROUP" "$DIR"
 
-    # Build chmod string for each permission
-    for perm in "${PERMISSIONS[@]}"; do
-        # Remove whitespace
-        perm=$(echo "$perm" | xargs)
-        sign="${perm:0:1}"
-        perm_word="${perm:1}"
-        perm_sym=$(perm_to_symbol "$perm_word")
+    # Set permissions recursively
+    if [[ -n "$CHMOD_ADD" ]]; then
+        log_info "Adding group permissions: $CHMOD_ADD recursively for $DIR"
+        chmod -R "g+$CHMOD_ADD" "$DIR"
+    fi
+    if [[ -n "$CHMOD_REMOVE" ]]; then
+        log_info "Removing group permissions: $CHMOD_REMOVE recursively for $DIR"
+        chmod -R "g-$CHMOD_REMOVE" "$DIR"
+    fi
 
-        if [[ -z "$perm_sym" ]]; then
-            echo "  Invalid permission: $perm"
-            continue
-        fi
-
-        echo "  Applying permission: $sign$perm_word (g$sign$perm_sym)"
-        chmod -R "g${sign}${perm_sym}" "$dir"
-    done
+    log_info "Completed processing $DIR"
 done
 
-echo "Done."
+log_info "All operations completed."
