@@ -2,24 +2,42 @@
 
 # mod_directory_permissions.sh
 # Recursively modify directory permissions for a given group
-# Reads paths, group, and permissions from (in order of precedence):
+# Reads settings (paths, group, and permissions) from (in order of precedence):
 # 1. Command line arguments
 # 2. Environment variables
-# 3. Files (paths.txt, group.txt, permissions.txt)
+# 3. A single settings file (settings.conf)
 
 ##############################
 # Usage Function
 ##############################
 print_usage() {
     cat <<EOF
-Usage: $0 [--paths "path1,path2,..."] [--group GROUP] [--permissions "+read,-write,+execute"]
+Usage: $0 [--paths "path1,path2,..."] [--group GROUP] [--dir-permissions "+read,-write,+execute"] [--file-permissions "+read,-write,+execute"]
 Options:
-  --paths         Comma-separated list of directory paths to process.
-  --group         Linux group name to assign to the directories.
-  --permissions   Comma-separated list of permissions to add/remove. Each permission is "+read", "-write", or "+execute", etc.
-  --help          Show this usage information.
+  --paths             Comma-separated list of directory paths to process.
+  --group             Linux group name to assign to the directories and files.
+  --dir-permissions   Comma-separated list of permissions for directories (e.g. "+read,+write,+execute").
+  --file-permissions  Comma-separated list of permissions for files (e.g. "+read,-write").
+  --settings-file     Path to a settings file (default: settings.conf).
+  --help              Show this usage information.
 
-Input precedence: Command line > Environment variables > Files (paths.txt, group.txt, permissions.txt)
+Input precedence: Command line > Environment variables > File (settings.conf)
+
+Environment Variables:
+  MDP_PATHS             Comma-separated list of directory paths.
+  MDP_GROUP             Linux group name.
+  MDP_DIR_PERMISSIONS   Comma-separated directory permissions.
+  MDP_FILE_PERMISSIONS  Comma-separated file permissions.
+
+Settings File (default: settings.conf):
+  The file should be in KEY=VALUE format, e.g.:
+      PATHS=/foo/bar,/baz/qux
+      GROUP=mygroup
+      DIR_PERMISSIONS=+read,+write,+execute
+      FILE_PERMISSIONS=+read,-write
+
+  Only PATHS and GROUP are required.
+  If no permissions are specified, only group ownership is set.
 
 See How-To-Use.md for detailed instructions and examples.
 EOF
@@ -42,8 +60,6 @@ log_error() {
 # Parse Inputs
 ##############################
 
-# Helper: Convert permission words to chmod symbols
-# $1: permission word ("read", "write", "execute")
 perm_to_symbol() {
     case "$1" in
         read) echo "r" ;;
@@ -56,10 +72,12 @@ perm_to_symbol() {
     esac
 }
 
-# 1. Parse command line arguments
 CMD_PATHS=""
 CMD_GROUP=""
-CMD_PERMISSIONS=""
+CMD_DIR_PERMISSIONS=""
+CMD_FILE_PERMISSIONS=""
+SETTINGS_FILE="settings.conf"
+
 if [[ "$1" == "--help" ]]; then
     print_usage
     exit 0
@@ -75,8 +93,16 @@ while [[ $# -gt 0 ]]; do
             CMD_GROUP="$2"
             shift 2
             ;;
-        --permissions)
-            CMD_PERMISSIONS="$2"
+        --dir-permissions)
+            CMD_DIR_PERMISSIONS="$2"
+            shift 2
+            ;;
+        --file-permissions)
+            CMD_FILE_PERMISSIONS="$2"
+            shift 2
+            ;;
+        --settings-file)
+            SETTINGS_FILE="$2"
             shift 2
             ;;
         --help)
@@ -94,41 +120,57 @@ done
 # Read Input Sources
 ##############################
 
-# Highest precedence: command line
-if [[ -n "$CMD_PATHS" && -n "$CMD_GROUP" && -n "$CMD_PERMISSIONS" ]]; then
+if [[ -n "$CMD_PATHS" && -n "$CMD_GROUP" ]]; then
     log_info "Using command line arguments."
     IFS=',' read -r -a PATHS <<< "$CMD_PATHS"
     GROUP="$CMD_GROUP"
-    IFS=',' read -r -a PERMISSIONS <<< "$CMD_PERMISSIONS"
-# Second precedence: environment variables
-elif [[ -n "$MDP_PATHS" && -n "$MDP_GROUP" && -n "$MDP_PERMISSIONS" ]]; then
+    if [[ -n "$CMD_DIR_PERMISSIONS" ]]; then
+        IFS=',' read -r -a DIR_PERMISSIONS <<< "$CMD_DIR_PERMISSIONS"
+    fi
+    if [[ -n "$CMD_FILE_PERMISSIONS" ]]; then
+        IFS=',' read -r -a FILE_PERMISSIONS <<< "$CMD_FILE_PERMISSIONS"
+    fi
+elif [[ -n "$MDP_PATHS" && -n "$MDP_GROUP" ]]; then
     log_info "Using environment variables."
     IFS=',' read -r -a PATHS <<< "$MDP_PATHS"
     GROUP="$MDP_GROUP"
-    IFS=',' read -r -a PERMISSIONS <<< "$MDP_PERMISSIONS"
-# Lowest precedence: files
+    if [[ -n "$MDP_DIR_PERMISSIONS" ]]; then
+        IFS=',' read -r -a DIR_PERMISSIONS <<< "$MDP_DIR_PERMISSIONS"
+    fi
+    if [[ -n "$MDP_FILE_PERMISSIONS" ]]; then
+        IFS=',' read -r -a FILE_PERMISSIONS <<< "$MDP_FILE_PERMISSIONS"
+    fi
 else
-    log_info "Reading paths, group, and permissions from files."
-
-    if [[ ! -f "paths.txt" ]]; then
-        log_error "paths.txt not found."
+    # Read settings from a single settings file
+    if [[ ! -f "$SETTINGS_FILE" ]]; then
+        log_error "Settings file not found: $SETTINGS_FILE"
         exit 1
     fi
-    if [[ ! -f "group.txt" ]]; then
-        log_error "group.txt not found."
-        exit 1
-    fi
-    if [[ ! -f "permissions.txt" ]]; then
-        log_error "permissions.txt not found."
-        exit 1
-    fi
-
-    # Read paths (can be one or more, ignore empty lines)
-    mapfile -t PATHS < <(grep -v '^\s*$' paths.txt)
-    # Read group (first non-empty line)
-    GROUP=$(grep -v '^\s*$' group.txt | head -n 1)
-    # Read permissions (can be multiple)
-    mapfile -t PERMISSIONS < <(grep -v '^\s*$' permissions.txt)
+    log_info "Reading paths, group, and permissions from $SETTINGS_FILE."
+    while IFS='=' read -r key value || [[ -n "$key" ]]; do
+        key="$(echo "$key" | tr -d '[:space:]')"
+        value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+        case "$key" in
+            PATHS)
+                IFS=',' read -r -a PATHS <<< "$value"
+                ;;
+            GROUP)
+                GROUP="$value"
+                ;;
+            DIR_PERMISSIONS)
+                IFS=',' read -r -a DIR_PERMISSIONS <<< "$value"
+                ;;
+            FILE_PERMISSIONS)
+                IFS=',' read -r -a FILE_PERMISSIONS <<< "$value"
+                ;;
+            ""|\#*)
+                # ignore empty lines and comments
+                ;;
+            *)
+                log_info "Unknown key in settings file: $key"
+                ;;
+        esac
+    done < "$SETTINGS_FILE"
 fi
 
 ##############################
@@ -145,12 +187,6 @@ if [[ -z "$GROUP" ]]; then
     exit 1
 fi
 
-if [[ ${#PERMISSIONS[@]} -eq 0 ]]; then
-    log_error "No permissions specified."
-    exit 1
-fi
-
-# Check if the group exists before proceeding
 if ! getent group "$GROUP" > /dev/null; then
     log_error "The specified group '$GROUP' does not exist."
     exit 1
@@ -160,112 +196,129 @@ fi
 # Process Permissions
 ##############################
 
-# Compose chmod symbolic string for group based on permissions
-# Supports multiple + and - operations (e.g., +r -w)
+build_chmod_string() {
+    local permissions=("$@")
+    local add=""
+    local remove=""
+    for perm in "${permissions[@]}"; do
+        sign="${perm:0:1}"
+        word="${perm:1}"
+        symbol=$(perm_to_symbol "$word")
+        if [[ "$sign" == "+" ]]; then
+            add+="$symbol"
+        elif [[ "$sign" == "-" ]]; then
+            remove+="$symbol"
+        else
+            log_error "Invalid permission format: $perm"
+            exit 1
+        fi
+    done
+    echo "$add|$remove"
+}
 
-CHMOD_ADD=""
-CHMOD_REMOVE=""
+DIR_CHMOD_ADD=""
+DIR_CHMOD_REMOVE=""
+FILE_CHMOD_ADD=""
+FILE_CHMOD_REMOVE=""
 
-for perm in "${PERMISSIONS[@]}"; do
-    sign="${perm:0:1}"
-    word="${perm:1}"
-    symbol=$(perm_to_symbol "$word")
-    if [[ "$sign" == "+" ]]; then
-        CHMOD_ADD+="$symbol"
-    elif [[ "$sign" == "-" ]]; then
-        CHMOD_REMOVE+="$symbol"
-    else
-        log_error "Invalid permission format: $perm"
-        exit 1
-    fi
-done
+if [[ ${#DIR_PERMISSIONS[@]} -gt 0 ]]; then
+    perms_str=$(build_chmod_string "${DIR_PERMISSIONS[@]}")
+    DIR_CHMOD_ADD="${perms_str%%|*}"
+    DIR_CHMOD_REMOVE="${perms_str##*|}"
+fi
+
+if [[ ${#FILE_PERMISSIONS[@]} -gt 0 ]]; then
+    perms_str=$(build_chmod_string "${FILE_PERMISSIONS[@]}")
+    FILE_CHMOD_ADD="${perms_str%%|*}"
+    FILE_CHMOD_REMOVE="${perms_str##*|}"
+fi
 
 ##############################
 # Apply Permissions (Manual Traversal)
 ##############################
-# Note: this code uses manual traversal of the directory structure instead of chmod -R because I found an instance where chmod -R was returning "Bad address" errors for anything it recursed into.
-# I discovered this issue when running the script inside an ubunte 24.04 docker container
-# Function to process a single file or directory
 
 process_path() {
     local path="$1"
     local group="$2"
-    local add_perms="$3"
-    local remove_perms="$4"
+    local is_dir="$3"
+    local dir_add="$4"
+    local dir_remove="$5"
+    local file_add="$6"
+    local file_remove="$7"
 
-    # Change group ownership
     log_info "Setting group ownership to '$group' for $path"
     chown :"$group" "$path"
 
-    # Set permissions for group
-    if [[ -n "$add_perms" ]]; then
-        log_info "Adding group permissions: $add_perms to $path"
-        chmod "g+$add_perms" "$path"
-    fi
-    if [[ -n "$remove_perms" ]]; then
-        log_info "Removing group permissions: $remove_perms from $path"
-        chmod "g-$remove_perms" "$path"
+    if [[ "$is_dir" == "1" ]]; then
+        if [[ -n "$dir_add" ]]; then
+            log_info "Adding group permissions: $dir_add to directory $path"
+            chmod "g+$dir_add" "$path"
+        fi
+        if [[ -n "$dir_remove" ]]; then
+            log_info "Removing group permissions: $dir_remove from directory $path"
+            chmod "g-$dir_remove" "$path"
+        fi
+    else
+        if [[ -n "$file_add" ]]; then
+            log_info "Adding group permissions: $file_add to file $path"
+            chmod "g+$file_add" "$path"
+        fi
+        if [[ -n "$file_remove" ]]; then
+            log_info "Removing group permissions: $file_remove from file $path"
+            chmod "g-$file_remove" "$path"
+        fi
     fi
 }
 
-# Traverse directory recursively and apply permissions
 traverse_and_apply() {
     local dir="$1"
     local group="$2"
-    local add_perms="$3"
-    local remove_perms="$4"
+    local dir_add="$3"
+    local dir_remove="$4"
+    local file_add="$5"
+    local file_remove="$6"
 
-    # Process the directory itself first
-    process_path "$dir" "$group" "$add_perms" "$remove_perms"
+    process_path "$dir" "$group" 1 "$dir_add" "$dir_remove" "$file_add" "$file_remove"
 
-    # Use find to enumerate all files and subdirectories (excluding symlinks)
     while IFS= read -r -d '' entry; do
-        process_path "$entry" "$group" "$add_perms" "$remove_perms"
+        if [[ -d "$entry" ]]; then
+            process_path "$entry" "$group" 1 "$dir_add" "$dir_remove" "$file_add" "$file_remove"
+        elif [[ -f "$entry" ]]; then
+            process_path "$entry" "$group" 0 "$dir_add" "$dir_remove" "$file_add" "$file_remove"
+        fi
     done < <(find "$dir" -mindepth 1 ! -type l -print0)
 }
 
 for DIR in "${PATHS[@]}"; do
     log_info "Processing directory: $DIR"
-
-    # Check if directory exists
     if [[ ! -d "$DIR" ]]; then
         log_error "Directory not found: $DIR"
         continue
     fi
 
-    traverse_and_apply "$DIR" "$GROUP" "$CHMOD_ADD" "$CHMOD_REMOVE"
+    traverse_and_apply "$DIR" "$GROUP" "$DIR_CHMOD_ADD" "$DIR_CHMOD_REMOVE" "$FILE_CHMOD_ADD" "$FILE_CHMOD_REMOVE"
+
     log_info "Completed processing $DIR"
-done
 
-# ##############################
-# # Apply Permissions
-# ##############################
-# Note: this code was re-written to use manual traversal (see above) of the directory structure because I found an instance where chmod -R was returning "Bad address" errors for anything it recursed into.
-
-# for DIR in "${PATHS[@]}"; do
-    # log_info "Processing directory: $DIR"
-
-    # # Check if directory exists
-    # if [[ ! -d "$DIR" ]]; then
-        # log_error "Directory not found: $DIR"
-        # continue
-    # fi
-
+    # --- BEGIN: Prior approach using chmod -R (commented out) ---
+    # The following block was previously used to modify permissions recursively.
+    # This approach is commented out in favor of explicit directory traversal above.
+    #
     # # Change group ownership recursively
     # log_info "Setting group ownership to '$GROUP' recursively for $DIR"
     # chown -R :"$GROUP" "$DIR"
-
+    #
     # # Set permissions recursively
     # if [[ -n "$CHMOD_ADD" ]]; then
-        # log_info "Adding group permissions: $CHMOD_ADD recursively for $DIR"
-        # chmod -R "g+$CHMOD_ADD" "$DIR"
+    #     log_info "Adding group permissions: $CHMOD_ADD recursively for $DIR"
+    #     chmod -R "g+$CHMOD_ADD" "$DIR"
     # fi
     # if [[ -n "$CHMOD_REMOVE" ]]; then
-        # log_info "Removing group permissions: $CHMOD_REMOVE recursively for $DIR"
-        # chmod -R "g-$CHMOD_REMOVE" "$DIR"
+    #     log_info "Removing group permissions: $CHMOD_REMOVE recursively for $DIR"
+    #     chmod -R "g-$CHMOD_REMOVE" "$DIR"
     # fi
+    # --- END: Prior approach using chmod -R (commented out) ---
 
-    # log_info "Completed processing $DIR"
-# done
+done
 
 log_info "All operations completed."
