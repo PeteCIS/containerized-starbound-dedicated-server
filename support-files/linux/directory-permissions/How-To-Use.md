@@ -1,91 +1,130 @@
-# How to Use `mod_directory_permissions.sh`
+# How To Use `mod_directory_permissions.sh`
 
-This script modifies directory permissions recursively for a specified Linux group, based on your input criteria.
-
-## Usage
-
-```
-./mod_directory_permissions.sh [--paths "path1,path2,..."] [--group GROUP] [--permissions "+read,-write,+execute"] [--help]
-```
-
-### Options
-
-- `--paths`         Comma-separated list of directory paths to process.
-- `--group`         Linux group name to assign to the directories.
-- `--permissions`   Comma-separated list of permissions. Each must be one of: `+read`, `-write`, `+execute`, etc.
-- `--help`          Show usage information.
-
-**Input precedence:**  
-1. Command line arguments  
-2. Environment variables  
-3. Files (`paths.txt`, `group.txt`, `permissions.txt`)
+This script recursively modifies directory and file group ownership and permissions for specified paths.  
+You can configure its behavior using **command line arguments**, **environment variables**, or a single **settings file**.
 
 ---
 
-## Examples
-
-### 1. Using Command Line Arguments
+## 1. Command Line Usage
 
 ```bash
-./mod_directory_permissions.sh --paths "/srv/data,/srv/shared" --group "mygroup" --permissions "+read,-write,+execute"
+./mod_directory_permissions.sh \
+  --paths "/dir1,/dir2" \
+  --group mygroup \
+  --dir-permissions "+read,+write,+execute" \
+  --file-permissions "+read,-write"
 ```
 
-### 2. Using Environment Variables
+- `--paths` (required): Comma-separated list of directories to process.
+- `--group` (required): Group to assign ownership to.
+- `--dir-permissions` (optional): Comma-separated permissions for directories.
+- `--file-permissions` (optional): Comma-separated permissions for files.
+- `--settings-file` (optional): Path to a settings file (default: `settings.conf`).
+
+**If no permissions are specified, only group ownership is set.**
+
+---
+
+## 2. Using Environment Variables
+
+Set these variables before running the script:
 
 ```bash
-export MDP_PATHS="/srv/data,/srv/shared"
+export MDP_PATHS="/dir1,/dir2"
 export MDP_GROUP="mygroup"
-export MDP_PERMISSIONS="+read,-write,+execute"
+export MDP_DIR_PERMISSIONS="+read,+write,+execute"
+export MDP_FILE_PERMISSIONS="+read,-write"
 ./mod_directory_permissions.sh
 ```
 
-### 3. Using Input Files
+- Only `MDP_PATHS` and `MDP_GROUP` are required.
+- If both command line arguments and environment variables are set, **command line takes precedence**.
 
-Create the following files in the same directory as the script:
+---
 
-- `paths.txt` (one directory per line):
-    ```
-    /srv/data
-    /srv/shared
-    ```
-- `group.txt` (the group name on one line):
-    ```
-    mygroup
-    ```
-- `permissions.txt` (one permission per line, with `+` or `-`):
-    ```
-    +read
-    -write
-    +execute
-    ```
+## 3. Using a Settings File
 
-Then run:
+The script supports a single settings file (default: `settings.conf`) with the following format:
 
+```
+PATHS=/dir1,/dir2
+GROUP=mygroup
+DIR_PERMISSIONS=+read,+write,+execute
+FILE_PERMISSIONS=+read,-write
+```
+
+- Only `PATHS` and `GROUP` are required.
+- Permissions are optional.
+- You may specify a different file using the `--settings-file` option.
+
+**Example:**
+
+```bash
+cat > settings.conf <<EOF
+PATHS=/srv/shared,/srv/projects
+GROUP=devteam
+DIR_PERMISSIONS=+read,+write,+execute
+FILE_PERMISSIONS=+read,-write
+EOF
+
+./mod_directory_permissions.sh
+```
+
+or with a custom file:
+
+```bash
+./mod_directory_permissions.sh --settings-file custom_settings.conf
+```
+
+---
+
+## 4. Precedence Order
+
+1. Command line arguments (highest)
+2. Environment variables
+3. Settings file (lowest)
+
+---
+
+## 5. Example: Change Only Group Ownership
+
+```bash
+./mod_directory_permissions.sh --paths "/data" --group mygroup
+```
+or
+```bash
+export MDP_PATHS="/data"
+export MDP_GROUP="mygroup"
+./mod_directory_permissions.sh
+```
+or
+```
+PATHS=/data
+GROUP=mygroup
+```
+in `settings.conf`, then run:
 ```bash
 ./mod_directory_permissions.sh
 ```
 
 ---
 
-## Permission Words
+## 6. Settings File Reference
 
-Valid permissions are:
-- `read`    → `r`
-- `write`   → `w`
-- `execute` → `x`
-
-Prefix with `+` to add or `-` to remove the permission for the group.
-
-Example:  
-`+read` will add read permission for the group.  
-`-write` will remove write permission for the group.
+- Lines starting with `#` are comments.
+- Only the following keys are recognized:
+    - `PATHS` (comma-separated string, required)
+    - `GROUP` (string, required)
+    - `DIR_PERMISSIONS` (comma-separated string, optional)
+    - `FILE_PERMISSIONS` (comma-separated string, optional)
 
 ---
 
-## Notes
+## 7. Help
 
-- You must have the necessary permissions (e.g., run as root) to change group ownership and permissions on directories.
-- The script prints clear messages for each step and prints usage information if you use `--help` or if there is an input error.
-- For any input error, the specific error is shown, followed by the usage help.
+```bash
+./mod_directory_permissions.sh --help
+```
+Displays usage instructions, including details for environment variables and settings file.
 
 ---
