@@ -1,111 +1,91 @@
-# Usage Examples for `mod_directory_permissions.sh`
+# How to Use `mod_directory_permissions.sh`
 
- 
+This script modifies directory permissions recursively for a specified Linux group, based on your input criteria.
 
-## 1. Using Input Files
-
- 
-
-Prepare the following files in the script's directory:
-
- 
-
-**paths.txt**
+## Usage
 
 ```
-
-/var/www/html
-
-/home/shared/data
-
+./mod_directory_permissions.sh [--paths "path1,path2,..."] [--group GROUP] [--permissions "+read,-write,+execute"] [--help]
 ```
 
- 
+### Options
 
-**group.txt**
+- `--paths`         Comma-separated list of directory paths to process.
+- `--group`         Linux group name to assign to the directories.
+- `--permissions`   Comma-separated list of permissions. Each must be one of: `+read`, `-write`, `+execute`, etc.
+- `--help`          Show usage information.
 
-```
+**Input precedence:**  
+1. Command line arguments  
+2. Environment variables  
+3. Files (`paths.txt`, `group.txt`, `permissions.txt`)
 
-developers
+---
 
-```
+## Examples
 
- 
-
-**permissions.txt**
-
-```
-
-+read
-
-+write
-
--execute
-
-```
-
- 
-
-Run the script:
+### 1. Using Command Line Arguments
 
 ```bash
+./mod_directory_permissions.sh --paths "/srv/data,/srv/shared" --group "mygroup" --permissions "+read,-write,+execute"
+```
 
+### 2. Using Environment Variables
+
+```bash
+export MDP_PATHS="/srv/data,/srv/shared"
+export MDP_GROUP="mygroup"
+export MDP_PERMISSIONS="+read,-write,+execute"
 ./mod_directory_permissions.sh
-
 ```
 
- 
+### 3. Using Input Files
 
----
+Create the following files in the same directory as the script:
 
- 
+- `paths.txt` (one directory per line):
+    ```
+    /srv/data
+    /srv/shared
+    ```
+- `group.txt` (the group name on one line):
+    ```
+    mygroup
+    ```
+- `permissions.txt` (one permission per line, with `+` or `-`):
+    ```
+    +read
+    -write
+    +execute
+    ```
 
-## 2. Using Command Line Arguments (highest precedence)
-
- 
-
-```bash
-
-./mod_directory_permissions.sh -p "/var/www/html,/home/shared/data" -g developers -m "+read,+write,-execute"
-
-```
-
- 
-
----
-
- 
-
-## 3. Using Environment Variables
-
- 
+Then run:
 
 ```bash
-
-export MDP_PATHS="/var/www/html,/home/shared/data"
-
-export MDP_GROUP="developers"
-
-export MDP_PERMISSIONS="+read,+write,-execute"
-
 ./mod_directory_permissions.sh
-
 ```
-
- 
 
 ---
 
- 
+## Permission Words
+
+Valid permissions are:
+- `read`    → `r`
+- `write`   → `w`
+- `execute` → `x`
+
+Prefix with `+` to add or `-` to remove the permission for the group.
+
+Example:  
+`+read` will add read permission for the group.  
+`-write` will remove write permission for the group.
+
+---
 
 ## Notes
 
- 
+- You must have the necessary permissions (e.g., run as root) to change group ownership and permissions on directories.
+- The script prints clear messages for each step and prints usage information if you use `--help` or if there is an input error.
+- For any input error, the specific error is shown, followed by the usage help.
 
-- If command line arguments are provided, environment variables and files are ignored.
-
-- If environment variables are set, files are ignored.
-
-- If neither are set, the script reads from `paths.txt`, `group.txt`, and `permissions.txt`.
-
-- The script outputs each step to standard output for transparency.
+---
