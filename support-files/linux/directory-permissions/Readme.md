@@ -40,6 +40,12 @@ please add functionality to print the usage options if the script is called with
 ## Third Pass
 please rewrite this to manually enumerate and traverse the directory instead of using chmod -R
 
+## 4
+modify this script to allow for the case where the user does not want to modify any permissions. Additionally, modify this script so that one set of permissions can be provided for directories and a different set of permissions can be provided for files.
+
+## 5
+update this to combine all the settings into a single file rather than 4 separate files. Also, update the usage information in the "print_usage()" function to include instructions on how to use the environment variable option and how to use the file option. Please also update the "How-To-Use.md" file with the latest information
+
 
 
 
