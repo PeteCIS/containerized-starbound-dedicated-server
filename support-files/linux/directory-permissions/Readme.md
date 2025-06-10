@@ -12,8 +12,7 @@ I decided to test out GitHub Copilot by getting it to make me a script that woul
 
 
 NEW
-Please write me a linux bash script that modifies directory permissions recursively.
-Please ensue the script does the following things:
+Please write me a linux bash script that modifies directory permissions recursively and base it on the following criteria:
 - reads one of more full directory paths from a file called "paths.txt".
 - reads a linux security group name from a file called "group.txt".
 - reads desired permissions from a file called "permissions.txt".
