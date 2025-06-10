@@ -150,6 +150,12 @@ if [[ ${#PERMISSIONS[@]} -eq 0 ]]; then
     exit 1
 fi
 
+# Check if the group exists before proceeding
+if ! getent group "$GROUP" > /dev/null; then
+    log_error "The specified group '$GROUP' does not exist."
+    exit 1
+fi
+
 ##############################
 # Process Permissions
 ##############################
